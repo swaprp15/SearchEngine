@@ -1,0 +1,43 @@
+ToDo
+
+Use String Builder  -  Instead of char array... ********** IMP **************
+
+Use long I guess..
+
+Exception handling
+
+Add title data
+
+2nd Level index...
+
+Improve parsing...
+
+Free up memory used by TreeSet Map etc.
+
+
+For word zuiderz   in index
+Doc Id - 120118 -> -717881343 
+120122 --> -717619199 
+120137   -716636159 
+120152   	-715653119 
+120194    -712900607 
+120196   - no
+
+in index3
+118441 to 118668
+
+in index4
+120118  -  120196
+
+This means I am doing something wrong while merging
+
+zuid
+118682
+118712
+120116
+120118
+120130
+120133
+
+120153 zuider(zuid)
+120188 -827588607(maybe)
