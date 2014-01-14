@@ -311,7 +311,7 @@ public class Parser {
 						//word[j] = '\0';
 						
 						
-						String w = new String(word, 0, j-1);
+						String w = new String(word, 0, j);
 						String in = new String("Infobox");
 						
 						
@@ -378,7 +378,7 @@ public class Parser {
 					if(j>0)
 					{
 						//word[j] = '\0';
-						String w = new String(word, 0, j-1);
+						String w = new String(word, 0, j);
 						
 						if(new String(word, 0, j).equals(new String("References")) && categoryStarted)
 						{

@@ -383,7 +383,7 @@ class Stemmer
 	                    w[j] = (char) ch;
 	                    if (j < 500) j++;
 	                    
-	                    if(i < word.length() - 1)
+	                    if(i < word.length())
 	                    	ch = word.charAt(i++);
 	                    
 	                    else

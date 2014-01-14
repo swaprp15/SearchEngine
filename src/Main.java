@@ -8,7 +8,7 @@ public class Main {
 		long millis = System.currentTimeMillis();
 		FileReaderWrapper reader = new FileReaderWrapper();
 		//reader.readFile("sample.xml");
-		reader.readFile("sample.xml");
+		reader.readFile("APage.xml");
 		System.out.println((System.currentTimeMillis() - millis) / 1000f + " seconds");
 	}
 

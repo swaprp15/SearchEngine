@@ -1,8 +1,10 @@
 ToDo
 
-Use String Builder  -  Instead of char array... ********** IMP **************
+Use String Builder  -  Instead of char array... (to avoid overflow) ********** IMP **************
 
-Use long I guess..
+Use long I guess.. for IDs
+
+Comma separated output
 
 Exception handling
 
@@ -10,10 +12,14 @@ Add title data
 
 2nd Level index...
 
+
 Improve parsing...
 
 Free up memory used by TreeSet Map etc.
 
+
+
+*********** Solved  ******************
 
 For word zuiderz   in index
 Doc Id - 120118 -> -717881343 
