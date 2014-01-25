@@ -27,7 +27,13 @@ class StopWords {
 			BufferedReader br = null;
 			try 
 			{
-			    br = new BufferedReader(new FileReader("stop_words.txt"));
+				StringBuilder sbr = new StringBuilder(StopWords.class.getProtectionDomain().getCodeSource().getLocation().getPath());
+				sbr.append("/");
+				sbr.append("stop_words.txt");
+	
+			    br = new BufferedReader(new FileReader(sbr.toString()));
+
+			//System.out.println("Read stop words from " + sbr.toString());
 		    
 		        StringBuilder sb = new StringBuilder();
 		        String line = br.readLine();
@@ -41,12 +47,14 @@ class StopWords {
 		        for(String s : sb.toString().split(","))
 		        {
 		        	words.add(s);
-		        	System.out.println(s);
+		        	//System.out.println(s);
 		        }
 		        
 			}
 			catch(Exception e)
 			{
+				//System.out.println("Couldn't open file");
+
 				if(br != null)
 					br.close();
 			}
@@ -75,14 +83,14 @@ class StopWords {
 public class Parser {
 	
 	private static HashSet<String> stopWords;
-	private static TreeMap<String, TreeSet<Integer>> words;
+	private static TreeMap<String, HashSet<Integer>> words;
 	
 	private Stemmer stemmer;
 	
 	public Parser()
 	{
 			stopWords = new StopWords().getWords();
-			words = new TreeMap<String, TreeSet<Integer>>();
+			words = new TreeMap<String, HashSet<Integer>>();
 			stemmer = new Stemmer();
 	}
 	
@@ -91,7 +99,7 @@ public class Parser {
 		words.clear();
 	}
 	
-	public TreeMap<String, TreeSet<Integer>> GetWords()
+	public TreeMap<String, HashSet<Integer>> GetWords()
 	{
 		return words;
 	}
@@ -153,10 +161,10 @@ public class Parser {
 			
 			// Store doc ID..
 			
-			TreeSet<Integer> docs =  words.get(stemmedWord);
+			HashSet<Integer> docs =  words.get(stemmedWord);
 			
 			if(docs == null)
-				docs = new TreeSet<Integer>();
+				docs = new HashSet<Integer>();
 			
 			docs.add(docId);
 			
@@ -227,10 +235,14 @@ public class Parser {
 	
 	public void AddWord(String word, int docId)
 	{
+		//System.out.println("Addword");
 		// Check if it is a stop word
 		if(stopWords.contains(word))
+		{
+			//System.out.println(word+" is a stop word");
 			// This is a stop word.
 			return;
+		}
 
 		String stemmedWord = stemmer.StemWord(new String(word));
 		
@@ -245,10 +257,10 @@ public class Parser {
 		words.put(stemmedWord, ++count);
 		*/
 		
-		TreeSet<Integer> docs =  words.get(stemmedWord);
+		HashSet<Integer> docs =  words.get(stemmedWord);
 		
 		if(docs == null)
-			docs = new TreeSet<Integer>();
+			docs = new HashSet<Integer>();
 		
 		docs.add(docId);
 		
@@ -306,10 +318,9 @@ public class Parser {
 					word[j++]=c;
 				else
 				{
-					if(j>0)
+					if(j>2)
 					{
 						//word[j] = '\0';
-						
 						
 						String w = new String(word, 0, j);
 						String in = new String("Infobox");
@@ -332,6 +343,7 @@ public class Parser {
 						AddWord(w, docId);
 						
 					}
+					j = 0;
 				}
 				
 				prevChar = c;
@@ -375,7 +387,7 @@ public class Parser {
 				}
 				else	
 				{
-					if(j>0)
+					if(j>2)
 					{
 						//word[j] = '\0';
 						String w = new String(word, 0, j);
@@ -405,6 +417,7 @@ public class Parser {
 						AddWord(w, docId);
 						
 					}
+					j = 0;
 				}
 				
 				prevChar = c;
@@ -456,6 +469,7 @@ public class Parser {
 			
 			// Add words from text tag apart from Info box...
 			ExtractWords(text, pageId);
+			ExtractWords(title, pageId);
 			
 			
 	        //System.out.println("total words: " + words.size());

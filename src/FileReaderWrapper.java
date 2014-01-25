@@ -6,6 +6,7 @@ import java.io.FileReader;
 import java.io.FileWriter;
 import java.io.IOError;
 import java.io.IOException;
+import java.util.HashSet;
 
 import java.util.Comparator;
 import java.util.HashMap;
@@ -20,12 +21,8 @@ import org.xml.sax.Attributes;
 import org.xml.sax.SAXException;
 import org.xml.sax.helpers.DefaultHandler;
 
-interface Constants
-{ 
-	 public static final String fileName = "index";
-}
-
-public class FileReaderWrapper {
+public class FileReaderWrapper 
+{
 	
 	DefaultHandler handler;
 	Parser parser;
@@ -41,9 +38,16 @@ public class FileReaderWrapper {
    	
    	StringBuilder buffer;
    	BufferedReader[] readers;
+   	
+   	private String outputFilePath;
 	
-	public FileReaderWrapper()
+	public FileReaderWrapper(String folder)
 	{
+		StringBuilder sb = new StringBuilder(folder);
+		sb.append('/');
+		sb.append(Constants.outputFileName);
+		outputFilePath = sb.toString();
+		
 		parser = new Parser();
 		queue = new PriorityQueue<PQueueNode>();
 		buffer = new StringBuilder();
@@ -162,7 +166,7 @@ public class FileReaderWrapper {
 		     };
 	}
  
-   public void readFile(String path)
+   public void readFile(String path, String indexFolder)
    {
 	   try
 	   {
@@ -173,13 +177,78 @@ public class FileReaderWrapper {
 		   
 		   MergeFiles();
 		   
-		   System.out.print("Done..");
+		   //System.out.print("Done..");
+
 	   }
 	   catch (Exception e) 
 	   {
 		   e.printStackTrace();
 	   }	
    }
+   
+//   public void WriteMapToFile()
+//   {
+//	   
+//	   
+//	   try
+//	   {
+//	   
+//		   File file = new File(Constants.fileName + fileNumber);
+//		   file.createNewFile();
+//		   
+//		   BufferedWriter writer = new BufferedWriter(new FileWriter(file));
+//		   
+//		   TreeMap<String, TreeSet<Integer>> words = parser.GetWords();; 
+//		   TreeSet<Integer> docSet;
+//		   
+//		   
+//		   
+//		   for(String word: words.keySet())
+//		   {
+//			   writer.write(word);
+//			   writer.write(',');
+//			   
+//			   docSet = words.get(word);
+//			   
+//			   StringBuilder ids = new StringBuilder();
+//			   
+//			   for(Iterator<Integer> it = docSet.iterator(); it.hasNext(); )
+//			   {
+//				   int id = it.next();
+//				   
+//				   if(word.equals(new String("zuiderz")))
+//				   {
+//					   System.out.println(id);
+//				   }
+//				   
+//				   /*
+//				   		   
+//				   char no1 = (char)(id >> 16);
+//				   char no2 = (char)(id & Integer.parseInt("000FFFF", 16));
+//				   
+//				   writer.write(no1);
+//				   writer.write(no2);
+//				   
+//				   */
+//				   
+//				   ids.append("" + id);
+//				   ids.append('.');
+//				   
+//			   }
+//			   writer.write('\n');
+//			   
+//		   }
+//		   
+//		   writer.flush();
+//	   }
+//	   catch(Exception e)
+//	   {
+//		   
+//	   }
+//	   
+//	   fileNumber++;
+//	   parser.ClearMap();
+//   }
    
    public void WriteMapToFile()
    {
@@ -188,41 +257,47 @@ public class FileReaderWrapper {
 	   try
 	   {
 	   
-		   File file = new File(Constants.fileName + fileNumber);
+		   File file = new File(outputFilePath + fileNumber);
 		   file.createNewFile();
 		   
 		   BufferedWriter writer = new BufferedWriter(new FileWriter(file));
 		   
-		   TreeMap<String, TreeSet<Integer>> words = parser.GetWords();; 
-		   TreeSet<Integer> docSet;
+		   TreeMap<String, HashSet<Integer>> words = parser.GetWords();; 
+		   HashSet<Integer> docSet;
 		   
-		   
+		   StringBuilder br = new StringBuilder();
 		   
 		   for(String word: words.keySet())
 		   {
-			   writer.write(word);
-			   writer.write(',');
+			   br.append(word);
+			   br.append(',');
 			   
 			   docSet = words.get(word);
+			   
+			   StringBuilder ids = new StringBuilder();
 			   
 			   for(Iterator<Integer> it = docSet.iterator(); it.hasNext(); )
 			   {
 				   int id = it.next();
 				   
-				   if(word.equals(new String("zuiderz")))
-				   {
-					   System.out.println(id);
-				   }
-				   
-				   
+				   /*
 				   		   
 				   char no1 = (char)(id >> 16);
 				   char no2 = (char)(id & Integer.parseInt("000FFFF", 16));
 				   
 				   writer.write(no1);
 				   writer.write(no2);
+				   
+				   */
+				   
+				   br.append(id);
+				   br.append('.');
+				   
+				   
 			   }
-			   writer.write('\n');
+			   br.append('\n');
+			   writer.write(br.toString());
+			   br.setLength(0);
 			   
 		   }
 		   
@@ -247,17 +322,20 @@ public class FileReaderWrapper {
 	   return -1;
    }
    
-   public void MergeFiles()
+   public void MergeFiles()  throws IOException
    {
 	   // Dump any remaining data
 	   if(numberOfDocs > 0)
 		   WriteMapToFile();
 	   
+
+	   BufferedWriter writer = null;
+
 	   try
 	   {
-		   File file = new File(Constants.fileName);
+		   File file = new File(outputFilePath);
 		   
-		   BufferedWriter writer = new BufferedWriter(new FileWriter(file));
+		   writer = new BufferedWriter(new FileWriter(file));
 		   
 		   readers = new BufferedReader[fileNumber+1];
 		   
@@ -267,7 +345,7 @@ public class FileReaderWrapper {
 		   
 		   for(int i =0; i < fileNumber; i++)
 		   {
-			   readers[i] = new BufferedReader(new FileReader(new String(Constants.fileName)+i));
+			   readers[i] = new BufferedReader(new FileReader(outputFilePath+i));
 			   lines[i] = readers[i].readLine().toCharArray();
 			   
 			   int j = 0, length = lines[i].length;
@@ -322,17 +400,23 @@ public class FileReaderWrapper {
 		   }
 		   
 		   
-		   
-		   
-		   
-		   
-		   
 		   writer.flush();
 		   
 	   }
 	   catch(Exception e)
 	   {
 		   System.out.print(e.getMessage());
+	   }
+	   finally
+	   {
+		   writer.close();                                  // *****************
+		   
+		   for(int i =0; i < fileNumber; i++)
+		   {
+			   readers[i].close();
+			   File fileToDelete = new File(outputFilePath+i);
+			   fileToDelete.delete();
+		   }
 	   }
    }
    
