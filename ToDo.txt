@@ -1,18 +1,25 @@
 ToDo
 
+PHASE II
+
+1. Limit resut to 10
+2. Apply ranking to posting list itself to reduce size of index
+3. Count total number of documents
+4. Decide optimal no of docs after which we need to write map to file 
+5. Stop searching the posting list as soon as we find 10 results. (For this we can sort posting list based on the tf-idf and keep limited entries.. For non field queries we can just take first 10 results and for other field queries we can just scan linearly untill we find 10 results.)
+
+
+PHASE I
+
 Persistent SecondLevel 
 
 Use String Builder  -  Instead of char array... (to avoid overflow) ********** IMP **************
 
 *****************  IMP *****  delte intermediate index files
 
-
-
 Use long I guess.. for IDs
 
 Exception handling
-
-Add MORE stop words
 
 2nd Level index... ********** Persist it **********..
 
@@ -22,49 +29,10 @@ Free up memory used by TreeSet Map etc.
 
 Adjust no of docs to be persisted to file to optimal...
 
-
-address warnings..
-
 make sure we KEEP Stop WORDS file and those words indeed get added....
 TreeSet to HashSet..
 
 
-
 bvfg taking 10 sec
 
-yay -- giving result for yai...
-
-Try skipping the greater word earlier..
-
-
-
 Binary Search Handle Corner case.
-
-*********** Solved  ******************
-
-For word zuiderz   in index
-Doc Id - 120118 -> -717881343 
-120122 --> -717619199 
-120137   -716636159 
-120152   	-715653119 
-120194    -712900607 
-120196   - no
-
-in index3
-118441 to 118668
-
-in index4
-120118  -  120196
-
-This means I am doing something wrong while merging
-
-zuid
-118682
-118712
-120116
-120118
-120130
-120133
-
-120153 zuider(zuid)
-120188 -827588607(maybe)

@@ -5,9 +5,9 @@ public class PQueueNode implements Comparable<PQueueNode> {
 	String word;
 	int index;
 	
-	public PQueueNode(char[] word, int length, int index)
+	public PQueueNode(StringBuilder sbr, int index)
 	{
-		this.word = new String(word, 0,length);
+		this.word = sbr.toString();
 		this.index = index;
 	}
 

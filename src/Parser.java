@@ -1,6 +1,7 @@
 import java.io.BufferedReader;
 import java.io.FileReader;
 import java.io.IOException;
+import java.util.EnumSet;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.TreeMap;
@@ -80,17 +81,54 @@ class StopWords {
 	
 }
 
+enum eCategory
+{
+	Title(1),
+	Body(2),
+	Infobox(4),
+	Category(8),
+	Link(16),
+	Reference(32),
+	None(64);
+	
+	int value;
+	
+	private eCategory(int value)
+	{
+		this.value = value;
+	}
+}
+
+
+class DocTermInfo
+{
+	int count;
+	EnumSet<eCategory> flags;
+	
+	public DocTermInfo() {
+		count = 0;
+		flags = EnumSet.noneOf(eCategory.class);
+	}
+	
+	public DocTermInfo(int count, eCategory flag)
+	{
+		this.count = count;
+		this.flags = EnumSet.noneOf(eCategory.class);
+		this.flags.add(flag);
+	}
+}
+
 public class Parser {
 	
 	private static HashSet<String> stopWords;
-	private static TreeMap<String, HashSet<Integer>> words;
+	private static TreeMap<String, HashMap<Integer, DocTermInfo>> words;
 	
 	private Stemmer stemmer;
 	
 	public Parser()
 	{
 			stopWords = new StopWords().getWords();
-			words = new TreeMap<String, HashSet<Integer>>();
+			words = new TreeMap<String, HashMap<Integer, DocTermInfo>>();
 			stemmer = new Stemmer();
 	}
 	
@@ -99,7 +137,7 @@ public class Parser {
 		words.clear();
 	}
 	
-	public TreeMap<String, HashSet<Integer>> GetWords()
+	public TreeMap<String, HashMap<Integer, DocTermInfo>> GetWords()
 	{
 		return words;
 	}
@@ -127,7 +165,7 @@ public class Parser {
             return result;
 	}
 	
-	public void GetWordCount(String text, int docId)
+	public void GetWordCount(String text, int docId, eCategory flag)
 	{
 		// For each word
 		Pattern wordPattern = Pattern.compile("[A-Za-z]+");
@@ -161,12 +199,24 @@ public class Parser {
 			
 			// Store doc ID..
 			
-			HashSet<Integer> docs =  words.get(stemmedWord);
+			HashMap<Integer, DocTermInfo> docs =  words.get(stemmedWord);
 			
 			if(docs == null)
-				docs = new HashSet<Integer>();
+				docs = new HashMap<Integer, DocTermInfo>();
 			
-			docs.add(docId);
+			// Is it reference type or value type
+			DocTermInfo dti = docs.get(docId);
+			
+			if(dti != null)
+			{
+				dti.flags.add(flag);
+				dti.count++;
+			}
+			else
+			{
+				dti = new DocTermInfo(1, flag);
+				docs.put(docId, dti);
+			}
 			
 			words.put(stemmedWord, docs);
 		}
@@ -197,7 +247,7 @@ public class Parser {
 				if(matcher.find())
 				{
 					//System.out.println(matcher.group(1));		
-					GetWordCount(matcher.group(1), docId);
+					GetWordCount(matcher.group(1), docId, eCategory.Body);
 					
 				}
 			}
@@ -233,42 +283,61 @@ public class Parser {
 	        return result;
 	}
 	
-	public void AddWord(String word, int docId)
+	public void AddWord(String word, int docId, eCategory flag)
 	{
-		//System.out.println("Addword");
-		// Check if it is a stop word
-		if(stopWords.contains(word))
+		try
 		{
-			//System.out.println(word+" is a stop word");
-			// This is a stop word.
-			return;
+		
+			//System.out.println("Addword");
+			// Check if it is a stop word
+			if(stopWords.contains(word))
+			{
+				//System.out.println(word+" is a stop word");
+				// This is a stop word.
+				return;
+			}
+		
+			String stemmedWord = stemmer.StemWord(new String(word));
+			
+			/*
+			int count = 0;
+			
+			if(words.containsKey(stemmedWord))
+			{
+				count = words.get(stemmedWord);
+			}
+			
+			words.put(stemmedWord, ++count);
+			*/
+			
+			HashMap<Integer, DocTermInfo> docs =  words.get(stemmedWord);
+			
+			if(docs == null)
+				docs = new HashMap<Integer, DocTermInfo>();
+			
+			// Is it reference type or value type
+			DocTermInfo dti = docs.get(docId);
+			
+			if(dti != null)
+			{
+				dti.flags.add(flag);
+				dti.count++;
+			}
+			else
+			{
+				dti = new DocTermInfo(1, flag);
+				docs.put(docId, dti);
+			}
+			
+			words.put(stemmedWord, docs);
 		}
-
-		String stemmedWord = stemmer.StemWord(new String(word));
-		
-		/*
-		int count = 0;
-		
-		if(words.containsKey(stemmedWord))
+		catch(Exception e)
 		{
-			count = words.get(stemmedWord);
+			
 		}
-		
-		words.put(stemmedWord, ++count);
-		*/
-		
-		HashSet<Integer> docs =  words.get(stemmedWord);
-		
-		if(docs == null)
-			docs = new HashSet<Integer>();
-		
-		docs.add(docId);
-		
-		words.put(stemmedWord, docs);
-		
 	}
 	
-	public void ExtractWords(StringBuilder text, int docId)
+	public void ExtractWords(StringBuilder text, int docId, eCategory passedCategory)
 		{
 			// ********************
 			// Clear previous words when we write to disk....
@@ -330,9 +399,13 @@ public class Parser {
 						{
 							infoBoxOn = true;
 						}
-						//else
-							//System.out.println(word);
-						
+						else
+						{
+							if(infoBoxOn)
+								AddWord(w, docId, eCategory.Infobox); // Say that this is in infobox
+							else
+								AddWord(w, docId, passedCategory);
+						}
 						
 						
 						j = 0;
@@ -340,7 +413,7 @@ public class Parser {
 						//Process word...
 						//System.out.println(word + " - ");
 						
-						AddWord(w, docId);
+						
 						
 					}
 					j = 0;
@@ -351,8 +424,10 @@ public class Parser {
 			
 			// Now process rest of the part
 			prevChar = '\0';
+			String prevWrod = null;
 			j = 0;
 			boolean categoryStarted = false, referencesStarted = false, externalLinkStarted = false;
+			boolean checkIfCategory = false, storeCategory = false;
 			
 			for(i++ ; i < textLength; i++)
 			{
@@ -362,6 +437,18 @@ public class Parser {
 				{
 					if(!categoryStarted)
 						categoryStarted = true;
+				}
+				if(c == '[' && prevChar == '[')
+				{
+					if(!checkIfCategory)
+						checkIfCategory = true;
+				}
+				else if(c == ']' && prevChar == ']')
+				{
+					if(checkIfCategory)
+						checkIfCategory = false;
+					if(storeCategory)
+						storeCategory = false;
 				}
 				else if((c >= 65 && c <= 90) || (c >= 97 && c <= 122))
 					word[j++]=c;
@@ -406,6 +493,39 @@ public class Parser {
 							//System.out.println("\nExternal started\n");
 							
 						}
+						else if(w.equalsIgnoreCase("links") && categoryStarted && prevWrod.equalsIgnoreCase("external"))
+						{
+							
+						}
+						else if(w.equalsIgnoreCase("category") && checkIfCategory)
+						{
+							storeCategory = true;
+						}
+						else
+						{
+							System.out.println(w + " in  " + (referencesStarted ? "reference ":"") + (externalLinkStarted? "External link":"" ) + (storeCategory ? " Category :":""));
+							
+							// Check which flag is true according add it...
+							
+							eCategory category;
+							
+							if(passedCategory == eCategory.Title)
+								category = eCategory.Title;
+							else
+							{	
+								category= eCategory.Body;
+
+								if(referencesStarted)
+									category = eCategory.Reference;
+								else if(externalLinkStarted)
+									category = eCategory.Link;
+								else if(storeCategory)
+									category = eCategory.Category;
+							
+							}
+							
+							AddWord(w, docId, category);
+						}
 						//else
 						//	System.out.println(word);
 						
@@ -414,9 +534,12 @@ public class Parser {
 						
 						//Process word...
 						//System.out.println(word + " - ");
-						AddWord(w, docId);
+						prevWrod = w;
+						
+
 						
 					}
+					
 					j = 0;
 				}
 				
@@ -468,8 +591,8 @@ public class Parser {
 			// Add words from title..
 			
 			// Add words from text tag apart from Info box...
-			ExtractWords(text, pageId);
-			ExtractWords(title, pageId);
+			ExtractWords(text, pageId, eCategory.None);
+			ExtractWords(title, pageId, eCategory.Title);
 			
 			
 	        //System.out.println("total words: " + words.size());

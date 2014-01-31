@@ -1,14 +1,23 @@
 import java.awt.image.TileObserver;
+import java.io.BufferedInputStream;
+import java.io.BufferedOutputStream;
 import java.io.BufferedReader;
 import java.io.BufferedWriter;
+import java.io.DataInputStream;
+import java.io.DataOutputStream;
+import java.io.EOFException;
 import java.io.File;
+import java.io.FileInputStream;
+import java.io.FileOutputStream;
 import java.io.FileReader;
 import java.io.FileWriter;
 import java.io.IOError;
 import java.io.IOException;
+import java.io.RandomAccessFile;
 import java.util.HashSet;
 
 import java.util.Comparator;
+import java.util.EnumSet;
 import java.util.HashMap;
 import java.util.Iterator;
 import java.util.PriorityQueue;
@@ -20,6 +29,30 @@ import javax.xml.parsers.SAXParserFactory;
 import org.xml.sax.Attributes;
 import org.xml.sax.SAXException;
 import org.xml.sax.helpers.DefaultHandler;
+
+class Tuple<X,Y,Z> implements Comparable<X>
+{
+	public X x;
+	public Y y;
+	public Z z;
+	
+	public Tuple(X x, Y y, Z z)
+	{
+		this.x = x;
+		this.y = y;
+		this.z = z;
+	}
+	
+	public Tuple()
+	{
+	}
+
+	@Override
+	public int compareTo(X o) {
+		// TODO Auto-generated method stub
+		return o == x ? 0:1;
+	}
+}
 
 public class FileReaderWrapper 
 {
@@ -37,7 +70,12 @@ public class FileReaderWrapper
    	boolean[] readLine;
    	
    	StringBuilder buffer;
-   	BufferedReader[] readers;
+   	//BufferedReader[] readers;
+   	//DataInputStream[] readers;
+   	RandomAccessFile[] readers;
+   	StringBuilder[] words;
+   	
+   	DataOutputStream writer = null;
    	
    	private String outputFilePath;
 	
@@ -193,33 +231,28 @@ public class FileReaderWrapper
 //	   try
 //	   {
 //	   
-//		   File file = new File(Constants.fileName + fileNumber);
+//		   File file = new File(outputFilePath + fileNumber);
 //		   file.createNewFile();
 //		   
 //		   BufferedWriter writer = new BufferedWriter(new FileWriter(file));
 //		   
-//		   TreeMap<String, TreeSet<Integer>> words = parser.GetWords();; 
-//		   TreeSet<Integer> docSet;
+//		   TreeMap<String, HashMap<Integer, DocTermInfo>> words = parser.GetWords();; 
+//		   HashMap<Integer, DocTermInfo> docMap;
 //		   
 //		   
+//		   StringBuilder br = new StringBuilder();
 //		   
 //		   for(String word: words.keySet())
 //		   {
-//			   writer.write(word);
-//			   writer.write(',');
+//			   br.append(word);
+//			   br.append(',');
 //			   
-//			   docSet = words.get(word);
+//			   docMap = words.get(word);
 //			   
 //			   StringBuilder ids = new StringBuilder();
 //			   
-//			   for(Iterator<Integer> it = docSet.iterator(); it.hasNext(); )
+//			   for(int id : docMap.keySet())
 //			   {
-//				   int id = it.next();
-//				   
-//				   if(word.equals(new String("zuiderz")))
-//				   {
-//					   System.out.println(id);
-//				   }
 //				   
 //				   /*
 //				   		   
@@ -231,11 +264,38 @@ public class FileReaderWrapper
 //				   
 //				   */
 //				   
-//				   ids.append("" + id);
-//				   ids.append('.');
+//				   br.append(id);
+//				   DocTermInfo dti = docMap.get(id);
+//				   br.append("Count:" + dti.count+",");
+//				   
+//				   EnumSet<eCategory> flags = dti.flags;
+//				   
+//				   if(flags.contains(eCategory.Title))
+//					   br.append("Title");
+//				   
+//				   if(flags.contains(eCategory.Body))
+//					   br.append("body");
+//				   
+//				   if(flags.contains(eCategory.Category))
+//					   br.append("category");
+//				   
+//				   if(flags.contains(eCategory.Infobox))
+//					   br.append("infobox");
+//				   
+//				   if(flags.contains(eCategory.Link))
+//					   br.append("link");
+//				   
+//				   if(flags.contains(eCategory.Reference))
+//					   br.append("refernce");
+//				   
+//				   
+//				   br.append('.');
+//				   
 //				   
 //			   }
-//			   writer.write('\n');
+//			   br.append('\n');
+//			   writer.write(br.toString());
+//			   br.setLength(0);
 //			   
 //		   }
 //		   
@@ -260,25 +320,33 @@ public class FileReaderWrapper
 		   File file = new File(outputFilePath + fileNumber);
 		   file.createNewFile();
 		   
-		   BufferedWriter writer = new BufferedWriter(new FileWriter(file));
+		   DataOutputStream dos = new DataOutputStream(new BufferedOutputStream(new FileOutputStream(file)));
+		   //BufferedWriter writer = new BufferedWriter(new FileWriter(file));
 		   
-		   TreeMap<String, HashSet<Integer>> words = parser.GetWords();; 
-		   HashSet<Integer> docSet;
+		   TreeMap<String, HashMap<Integer, DocTermInfo>> words = parser.GetWords();; 
+		   HashMap<Integer, DocTermInfo> docMap;
+		   
 		   
 		   StringBuilder br = new StringBuilder();
 		   
 		   for(String word: words.keySet())
 		   {
-			   br.append(word);
-			   br.append(',');
+			   //br.append(word);
 			   
-			   docSet = words.get(word);
+			   dos.write(word.getBytes());
+			   dos.writeByte(Constants.WordSeparator);
+			   
+			   //br.append(',');
+			   
+			   docMap = words.get(word);
+			   
+			   // Number of docs
+			   dos.writeInt(docMap.size());
 			   
 			   StringBuilder ids = new StringBuilder();
 			   
-			   for(Iterator<Integer> it = docSet.iterator(); it.hasNext(); )
+			   for(int id : docMap.keySet())
 			   {
-				   int id = it.next();
 				   
 				   /*
 				   		   
@@ -290,18 +358,61 @@ public class FileReaderWrapper
 				   
 				   */
 				   
-				   br.append(id);
-				   br.append('.');
+				   //br.append(id);
+				   
+				   dos.writeInt(id);
+				   
+				   DocTermInfo dti = docMap.get(id);
+				   
+				   //br.append("Count:" + dti.count+",");
+				   
+				   dos.writeInt(dti.count);
+				   
+				   EnumSet<eCategory> flags = dti.flags;
+				   
+				   byte flag = 0;
+				   
+				   if(flags.contains(eCategory.Title))
+					   //br.append("Title");
+					   flag |= 1;
+				   
+				   if(flags.contains(eCategory.Body))
+					   //br.append("body");
+					   flag |= 2;
+				   
+				   if(flags.contains(eCategory.Category))
+					   //br.append("category");
+					   flag |= 4;
+				   
+				   if(flags.contains(eCategory.Infobox))
+					   //br.append("infobox");
+					   flag |= 8;
+				   
+				   if(flags.contains(eCategory.Link))
+					   //br.append("link");
+					   flag |= 16;
+				   
+				   if(flags.contains(eCategory.Reference))
+					   //br.append("refernce");
+					   flag |= 32;
+				   
+				   
+				   //br.append('.');
+				   dos.writeByte(flag);
 				   
 				   
 			   }
-			   br.append('\n');
-			   writer.write(br.toString());
-			   br.setLength(0);
+			   
+			   //br.append('\n');
+			   dos.writeByte(Constants.RecordSeparator);
+			   
+			   //writer.write(br.toString());
+			   //br.setLength(0);
 			   
 		   }
 		   
-		   writer.flush();
+		   //writer.flush();
+		   dos.flush();
 	   }
 	   catch(Exception e)
 	   {
@@ -313,6 +424,7 @@ public class FileReaderWrapper
    }
    
    public int GetAvailableFileIndex()
+   
    {
 	   for(int index:fileAvailable.keySet())
 	   {
@@ -329,37 +441,55 @@ public class FileReaderWrapper
 		   WriteMapToFile();
 	   
 
-	   BufferedWriter writer = null;
+	   
+	   
 
 	   try
 	   {
 		   File file = new File(outputFilePath);
 		   
-		   writer = new BufferedWriter(new FileWriter(file));
+		   writer = new DataOutputStream(new BufferedOutputStream(new FileOutputStream(file)));
 		   
-		   readers = new BufferedReader[fileNumber+1];
+		   //readers = new BufferedReader[fileNumber+1];
+		   //readers = new DataInputStream[fileNumber+1];
+		   readers = new RandomAccessFile[fileNumber+1];
 		   
 		   lines = new char[fileNumber+1][];
 		   terms = new char[fileNumber+1][];
+		   words = new StringBuilder[fileNumber+1];
 		   readLine = new boolean[fileNumber+1];
 		   
 		   for(int i =0; i < fileNumber; i++)
 		   {
-			   readers[i] = new BufferedReader(new FileReader(outputFilePath+i));
-			   lines[i] = readers[i].readLine().toCharArray();
+			   //readers[i] = new DataInputStream(new BufferedInputStream(new FileInputStream(outputFilePath+i)));
+			   readers[i] = new RandomAccessFile(outputFilePath+i, "r");
 			   
-			   int j = 0, length = lines[i].length;
-			   
-			   terms[i] = new char[length];
-			   
-			   for(j=0; j < length; j++)
+			   try
 			   {
-				   if(lines[i][j] == ',')
+				   //readers[i].readInt();
+			   }
+			   catch(Exception e)
+			   {
+				   System.out.println(e.getMessage());
+			   }
+			   //lines[i] = readers[i].readLine().toCharArray();
+			   words[i] = new StringBuilder();
+			   
+			   char c;
+			   byte b;
+			   
+			   while(true)
+			   {
+				   b = readers[i].readByte();
+				   if(b == (byte)Constants.WordSeparator)
 					   break;
-				   terms[i][j] = lines[i][j];
+				   words[i].append((char)b);
 			   }
 			   
-			   PQueueNode node = new PQueueNode(terms[i], j, i);
+			   //System.out.println(readers[i].readInt());
+			   
+			   PQueueNode node = new PQueueNode(words[i], i);
+			   words[i].setLength(0);
 			   
 			   queue.add(node);
 			   
@@ -377,27 +507,20 @@ public class FileReaderWrapper
 		   while(true)
 		   {
 			   
-			   StringBuilder line = RemoveLines();
-			   
-			   if(line == null)
+			   if(!RemoveLines())
 				   break;
-			   
-			   writer.write(line.toString().toCharArray());
-			   writer.write('\n');
-			   
-			   // Add lines...
 			   
 			   AddLines();
 			   
 		   }
 		   
-		   while(!queue.isEmpty())
-		   {
-			   PQueueNode head = queue.remove();
-			   int index = head.getIndex();
-			   writer.write(lines[index]);
-			   writer.write('\n');
-		   }
+//		   while(!queue.isEmpty())
+//		   {
+//			   PQueueNode head = queue.remove();
+//			   int index = head.getIndex();
+//			   writer.write(lines[index]);
+//			   writer.write('\n');
+//		   }
 		   
 		   
 		   writer.flush();
@@ -414,73 +537,116 @@ public class FileReaderWrapper
 		   for(int i =0; i < fileNumber; i++)
 		   {
 			   readers[i].close();
-			   File fileToDelete = new File(outputFilePath+i);
-			   fileToDelete.delete();
+			   //File fileToDelete = new File(outputFilePath+i);
+			   //fileToDelete.delete();
 		   }
 	   }
+	   
+	   
+	   
    }
    
-   public StringBuilder RemoveLines()
+   public boolean RemoveLines() throws IOException
    {
 	   if(queue.isEmpty())
-		   return null;
+		   return false;
 	   
 	   PQueueNode head = queue.remove();
 	   int index = head.getIndex();
 	   
 	   readLine[index] = true;
 	   
-	   if(queue.isEmpty())
-		   return new StringBuilder(new String(lines[index]));
+	   String word = head.word;
 	   
-	   buffer.setLength(0);
+	   // Write word and separator
+	   writer.write(word.getBytes());
+	   writer.writeByte(Constants.WordSeparator);
 	   
-	   int length=0;
-	   for(;length < lines[index].length; length++)
-	   {
-		   if(lines[index][length] == ',')
-			   break;
-	   }
-	   
-	   buffer.append(lines[index], 0, length);
-	   buffer.append(',');
-	   
-	   char[] currentTerm = new char[length];
-	   for(int i =0 ; i < length; i++)
-	   {
-		   currentTerm[i] = lines[index][i];
-	   }
+	   TreeSet<Tuple<Integer, Integer, Byte>> ids = new TreeSet<>();
 	   
 	   
-	   // ****		For now don't add doc ids.. *****************
-	   length++;
-	   while(length < lines[index].length)
-	   {
-		   buffer.append(lines[index][length++]);
-	   }
+	   // Now accumulate doc ids and info
+	   //if(queue.isEmpty())
+	   //{
+		   try
+		   {
+			   //int noOfIds = readers[index].readInt();
+			   
+			   int numOfDocs = readers[index].readInt();
+			   
+			   while(numOfDocs > 0)
+			   {
+				   Tuple<Integer, Integer, Byte> tuple = new Tuple<Integer, Integer, Byte>();
+				   
+				   tuple.x = readers[index].readInt();
+				   tuple.y = readers[index].readInt();
+				   tuple.z = readers[index].readByte();
+				   
+				   ids.add(tuple);
+				   numOfDocs--;
+			   }
+			   
+			   // read new line byte..
+			   readers[index].readByte();
+		   }
+		   catch(Exception e)
+		   {
+			   System.out.println(e.getMessage());
+		   }
+		   //return true;
+	  // }
 	   
-	   
-	   while(!queue.isEmpty() && IsEqual(queue.peek().getWord().toCharArray(), currentTerm))
+	   while(!queue.isEmpty() && IsEqual(queue.peek().getWord(), word))
 	   {
 		   head = queue.remove();
 		   int newIndex = head.getIndex();
 		   readLine[newIndex] = true;
 		   
-		   int i=0;
+		   words[newIndex].setLength(0);
 		   
-		   while(i < lines[newIndex].length && lines[newIndex][i++]!=',');
-		   
-		   //i++;
-		   
-		   while(i < lines[newIndex].length)
+		   try
 		   {
-			   buffer.append(lines[newIndex][i++]);
+			   int numOfDocs = readers[newIndex].readInt();
+			   
+			   while(numOfDocs > 0)
+			   {
+				   Tuple<Integer, Integer, Byte> tuple = new Tuple<Integer, Integer, Byte>();
+				   
+				   tuple.x = readers[newIndex].readInt();
+				   tuple.y = readers[newIndex].readInt();
+				   tuple.z = readers[newIndex].readByte();
+				   
+				   ids.add(tuple);
+				   numOfDocs--;
+			   }
+			   
+			   // read new line byte..
+			   readers[newIndex].readByte();
+		   }
+		   catch(Exception e)
+		   {
+			   System.out.println(e.getMessage());
 		   }
 		   
 		   
 	   }
 	   
-	   return buffer;
+	   int noOfIds = ids.size();
+	   
+	   writer.writeInt(noOfIds);
+	   
+	   for(Iterator<Tuple<Integer, Integer, Byte>> it = ids.iterator(); it.hasNext();)
+	   {
+		   Tuple<Integer, Integer, Byte> tuple = it.next();
+		   writer.writeInt(tuple.x);
+		   writer.writeInt(tuple.y);
+		   writer.writeByte(tuple.z);
+	   }
+	   
+	   //writer.writeByte(Constants.NewLineChar);
+	   writer.writeByte(Constants.RecordSeparator);
+	   
+	   return true;
    }
    
    public void AddLines() throws IOException
@@ -490,47 +656,253 @@ public class FileReaderWrapper
 		   if(readLine[index] == false || fileAvailable.get(index) == false)
 			   continue;
 		   
-		   String line = readers[index].readLine();
-		   
-		   if(line == null)
+		   try
 		   {
-			   fileAvailable.put(index, false);
-		   }
-		   else
-		   {
-			   lines[index] = line.toCharArray();
-			   readLine[index] = false;
+			   char c;
+			   words[index].setLength(0);
+			   while(true)
+			   {
+				   c = (char)readers[index].readByte();
+				   if(c == Constants.WordSeparator)
+					   break;
+				   words[index].append(c);
+			   }
 			   
-			   int i = 0;
-			   while(lines[index][i++] != ',');
+			   readLine[index] = false;			 
 			   
-			   PQueueNode node = new PQueueNode(lines[index], i-1, index);
+			   PQueueNode node = new PQueueNode(words[index], index);
 			   
 			   queue.add(node);
 		   }
-		   
+		   catch(EOFException e)
+		   {
+			   readLine[index] = false;
+			   fileAvailable.put(index, false);
+			   
+			   System.out.println(e.getMessage());
+		   }
 	   }
    }
    
-   public boolean IsEqual(char[] first, char[] second)
+   public boolean IsEqual(String first, String second)
    {
-	   int firstLength = first.length;
-	   int secondLength = second.length;
-	   
-	   int i = 0;
-	   while( i < firstLength && i < secondLength)
-	   {
-		   int diff = first[i] - second[i];
-		   i++;
-		   if(diff == 0)
-			   continue;
-		   else
-			   return false;
-	   }
-	   
-	   return firstLength == secondLength;
+	   return first.equalsIgnoreCase(second);
 	  
    }
+   
+//   public void MergeFiles()  throws IOException
+//   {
+//	   // Dump any remaining data
+//	   if(numberOfDocs > 0)
+//		   WriteMapToFile();
+//	   
+//
+//	   
+//	   BufferedWriter writer = null;
+//
+//	   try
+//	   {
+//		   File file = new File(outputFilePath);
+//		   
+//		   writer = new BufferedWriter(new FileWriter(file));
+//		   
+//		   readers = new BufferedReader[fileNumber+1];
+//		   
+//		   lines = new char[fileNumber+1][];
+//		   terms = new char[fileNumber+1][];
+//		   readLine = new boolean[fileNumber+1];
+//		   
+//		   for(int i =0; i < fileNumber; i++)
+//		   {
+//			   readers[i] = new BufferedReader(new FileReader(outputFilePath+i));
+//			   lines[i] = readers[i].readLine().toCharArray();
+//			   
+//			   int j = 0, length = lines[i].length;
+//			   
+//			   terms[i] = new char[length];
+//			   
+//			   for(j=0; j < length; j++)
+//			   {
+//				   if(lines[i][j] == ',')
+//					   break;
+//				   terms[i][j] = lines[i][j];
+//			   }
+//			   
+//			   PQueueNode node = new PQueueNode(terms[i], j, i);
+//			   
+//			   queue.add(node);
+//			   
+//			   
+//		   }
+//		   
+//		   fileAvailable = new TreeMap<Integer, Boolean>();
+//		   for(int k = 0; k < fileNumber; k++)
+//		   {
+//			   fileAvailable.put(k, true);
+//		   }
+//		   
+//		   Boolean noFileAvailable = false;
+//		   
+//		   while(true)
+//		   {
+//			   
+//			   StringBuilder line = RemoveLines();
+//			   
+//			   if(line == null)
+//				   break;
+//			   
+//			   writer.write(line.toString().toCharArray());
+//			   writer.write('\n');
+//			   
+//			   // Add lines...
+//			   
+//			   AddLines();
+//			   
+//		   }
+//		   
+//		   while(!queue.isEmpty())
+//		   {
+//			   PQueueNode head = queue.remove();
+//			   int index = head.getIndex();
+//			   writer.write(lines[index]);
+//			   writer.write('\n');
+//		   }
+//		   
+//		   
+//		   writer.flush();
+//		   
+//	   }
+//	   catch(Exception e)
+//	   {
+//		   System.out.print(e.getMessage());
+//	   }
+//	   finally
+//	   {
+//		   writer.close();                                  // *****************
+//		   
+//		   for(int i =0; i < fileNumber; i++)
+//		   {
+//			   readers[i].close();
+//			   File fileToDelete = new File(outputFilePath+i);
+//			   fileToDelete.delete();
+//		   }
+//	   }
+//	   
+//	   
+//	   
+//   }
+   
+//   public StringBuilder RemoveLines()
+//   {
+//	   if(queue.isEmpty())
+//		   return null;
+//	   
+//	   PQueueNode head = queue.remove();
+//	   int index = head.getIndex();
+//	   
+//	   readLine[index] = true;
+//	   
+//	   if(queue.isEmpty())
+//		   return new StringBuilder(new String(lines[index]));
+//	   
+//	   buffer.setLength(0);
+//	   
+//	   int length=0;
+//	   for(;length < lines[index].length; length++)
+//	   {
+//		   if(lines[index][length] == ',')
+//			   break;
+//	   }
+//	   
+//	   buffer.append(lines[index], 0, length);
+//	   buffer.append(',');
+//	   
+//	   char[] currentTerm = new char[length];
+//	   for(int i =0 ; i < length; i++)
+//	   {
+//		   currentTerm[i] = lines[index][i];
+//	   }
+//	   
+//	   
+//	   // ****		For now don't add doc ids.. *****************
+//	   length++;
+//	   while(length < lines[index].length)
+//	   {
+//		   buffer.append(lines[index][length++]);
+//	   }
+//	   
+//	   
+//	   while(!queue.isEmpty() && IsEqual(queue.peek().getWord().toCharArray(), currentTerm))
+//	   {
+//		   head = queue.remove();
+//		   int newIndex = head.getIndex();
+//		   readLine[newIndex] = true;
+//		   
+//		   int i=0;
+//		   
+//		   while(i < lines[newIndex].length && lines[newIndex][i++]!=',');
+//		   
+//		   //i++;
+//		   
+//		   while(i < lines[newIndex].length)
+//		   {
+//			   buffer.append(lines[newIndex][i++]);
+//		   }
+//		   
+//		   
+//	   }
+//	   
+//	   return buffer;
+//   }
+//   
+//   public void AddLines() throws IOException
+//   {
+//	   for(int index = 0; index < fileNumber; index++)
+//	   {
+//		   if(readLine[index] == false || fileAvailable.get(index) == false)
+//			   continue;
+//		   
+//		   String line = readers[index].readLine();
+//		   
+//		   if(line == null)
+//		   {
+//			   fileAvailable.put(index, false);
+//		   }
+//		   else
+//		   {
+//			   lines[index] = line.toCharArray();
+//			   readLine[index] = false;
+//			   
+//			   int i = 0;
+//			   while(lines[index][i++] != ',');
+//			   
+//			   PQueueNode node = new PQueueNode(lines[index], i-1, index);
+//			   
+//			   queue.add(node);
+//		   }
+//		   
+//	   }
+//   }
+//   
+//   public boolean IsEqual(char[] first, char[] second)
+//   {
+//	   int firstLength = first.length;
+//	   int secondLength = second.length;
+//	   
+//	   int i = 0;
+//	   while( i < firstLength && i < secondLength)
+//	   {
+//		   int diff = first[i] - second[i];
+//		   i++;
+//		   if(diff == 0)
+//			   continue;
+//		   else
+//			   return false;
+//	   }
+//	   
+//	   return firstLength == secondLength;
+//	  
+//   }
    
    /*
    public void MergeFiles()

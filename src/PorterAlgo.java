@@ -6,6 +6,9 @@ interface Constants
 	 public static final String outputFileName = "index";
 	 public static final String indexFileName = "index";
 	 public static final String secondaryIndexFileName = "secondaryIndex";
+	 public static final char NewLineChar = '\n';
+	 public static final char WordSeparator = ':';
+	 public static final char RecordSeparator = '!';
 }
 
 class Stemmer
